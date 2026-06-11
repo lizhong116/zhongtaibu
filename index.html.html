@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>读书会 · 分享抽签</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4ece0;
+    --paper-2:#ece2d2;
+    --ink:#2b2620;
+    --ink-soft:#6b6055;
+    --line:#cdbfa8;
+    --line-soft:#ddd0bb;
+    --seal:#b3372a;        /* 朱砂 */
+    --seal-deep:#8f2a20;
+    --gold:#b08a4a;
+    --ok:#5a7d52;
+    --shadow:rgba(50,38,24,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Noto Serif SC",serif;
+    color:var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% -10%, #faf3e8 0%, var(--paper) 45%, var(--paper-2) 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* 纸纹 */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 27px, rgba(120,90,50,.05) 27px 28px),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/></svg>");
+  }
+  .wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:32px 20px 80px}
+
+  /* 顶部 */
+  header{text-align:center;position:relative;padding:14px 0 26px}
+  .kicker{font-size:13px;letter-spacing:.5em;color:var(--seal);text-indent:.5em;font-weight:600;margin-bottom:10px}
+  h1{
+    font-family:"Ma Shan Zheng",cursive;
+    font-size:clamp(46px,9vw,82px);
+    line-height:1;color:var(--ink);font-weight:400;letter-spacing:.06em;
+  }
+  .seal{
+    position:absolute;top:6px;right:calc(50% - 230px);
+    width:64px;height:64px;border:2.5px solid var(--seal);border-radius:8px;
+    color:var(--seal);font-family:"Ma Shan Zheng",cursive;font-size:22px;
+    display:grid;place-items:center;text-align:center;line-height:1.05;
+    transform:rotate(-8deg);opacity:.9;
+    box-shadow:0 0 0 3px rgba(179,55,42,.08) inset;
+  }
+  @media(max-width:760px){.seal{display:none}}
+  .subtitle{margin-top:14px;color:var(--ink-soft);font-size:15px;letter-spacing:.08em}
+  .rule{height:2px;width:120px;margin:20px auto 0;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+
+  /* 导航 */
+  nav{display:flex;justify-content:center;gap:0;margin:26px auto 8px;width:fit-content;
+      border:1.5px solid var(--ink);border-radius:50px;overflow:hidden;background:rgba(255,255,255,.25)}
+  nav button{
+    font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);
+    background:transparent;border:none;cursor:pointer;padding:11px 30px;letter-spacing:.12em;
+    transition:.25s}
+  nav button.active{background:var(--ink);color:var(--paper)}
+
+  /* 统计条 */
+  .stats{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:24px 0 8px}
+  .stat{background:rgba(255,255,255,.4);border:1px solid var(--line-soft);border-radius:12px;
+        padding:12px 22px;text-align:center;min-width:120px;backdrop-filter:blur(2px)}
+  .stat .num{font-size:30px;font-weight:900;line-height:1;color:var(--seal)}
+  .stat .lbl{font-size:12px;color:var(--ink-soft);letter-spacing:.18em;margin-top:6px}
+
+  .toolbar{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:22px 0 26px}
+
+  /* 通用按钮 */
+  .btn{font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.08em;cursor:pointer;
+       border-radius:10px;padding:11px 20px;transition:.18s;border:1.5px solid var(--ink);
+       background:var(--ink);color:var(--paper)}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 6px 14px var(--shadow)}
+  .btn:active{transform:translateY(0)}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.seal{background:var(--seal);border-color:var(--seal)}
+  .btn.seal:hover{background:var(--seal-deep)}
+  .btn.sm{padding:8px 16px;font-size:13px}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+  /* 分配表 */
+  .sheet{background:rgba(255,255,255,.42);border:1.5px solid var(--line);border-radius:16px;
+         overflow:hidden;box-shadow:0 14px 40px -22px var(--shadow)}
+  .row{display:grid;grid-template-columns:130px 1fr auto;align-items:center;gap:16px;
+       padding:14px 20px;border-bottom:1px dashed var(--line-soft)}
+  .row:last-child{border-bottom:none}
+  .row:nth-child(odd){background:rgba(255,255,255,.22)}
+  .pg{font-weight:700;font-size:17px;letter-spacing:.04em;white-space:nowrap}
+  .pg span{display:block;font-size:11px;color:var(--ink-soft);font-weight:500;letter-spacing:.2em;margin-top:2px}
+  .sharers{display:flex;flex-wrap:wrap;gap:8px;min-height:34px;align-items:center}
+  .chip{display:inline-flex;align-items:center;gap:8px;background:var(--paper);
+        border:1.5px solid var(--ink);border-radius:30px;padding:5px 8px 5px 14px;
+        font-weight:600;font-size:15px;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+  .chip .x{cursor:pointer;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;
+           font-size:13px;color:var(--ink-soft);background:rgba(0,0,0,.05);line-height:1}
+  .chip .x:hover{background:var(--seal);color:#fff}
+  .empty-hint{color:var(--ink-soft);font-style:italic;font-size:14px;opacity:.7}
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+  @media(max-width:620px){
+    .row{grid-template-columns:1fr;gap:10px}
+    .row .actions-cell{justify-self:start}
+  }
+
+  /* 后台 */
+  .panel{background:rgba(255,255,255,.42);border:1.5px solid var(--line);border-radius:16px;
+         padding:24px;margin-bottom:22px;box-shadow:0 14px 40px -22px var(--shadow)}
+  .panel h2{font-size:20px;font-weight:700;letter-spacing:.1em;margin-bottom:4px;
+            display:flex;align-items:center;gap:10px}
+  .panel h2::before{content:"";width:18px;height:18px;background:var(--seal);border-radius:3px;transform:rotate(45deg)}
+  .panel .desc{color:var(--ink-soft);font-size:13px;margin-bottom:18px}
+  .field{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .field label{font-size:13px;color:var(--ink-soft);display:block;margin-bottom:6px;letter-spacing:.1em}
+  input[type=text],input[type=number]{
+    font-family:inherit;font-size:16px;color:var(--ink);background:var(--paper);
+    border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;outline:none;width:100%}
+  input:focus{border-color:var(--seal)}
+  .grow{flex:1;min-width:160px}
+  .num-in{width:110px}
+
+  /* 人员名单 */
+  .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:6px}
+  .person{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;
+          position:relative;transition:.2s}
+  .person.done{border-color:var(--gold);background:linear-gradient(180deg,#fcf6e6,var(--paper))}
+  .person .pname{font-size:18px;font-weight:700;letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center}
+  .person .del{cursor:pointer;color:var(--ink-soft);font-size:13px;border:1px solid var(--line);
+               border-radius:8px;padding:2px 8px;transition:.15s}
+  .person .del:hover{color:#fff;background:var(--seal);border-color:var(--seal)}
+  .slots{display:flex;gap:8px;margin-top:12px;align-items:center}
+  .slot{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);
+        display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink-soft)}
+  .slot.used{background:var(--seal);border-color:var(--seal);color:#fff}
+  .person .meta{font-size:12px;color:var(--ink-soft);margin-top:10px;letter-spacing:.05em}
+  .person .badge{position:absolute;top:-10px;right:-8px;background:var(--gold);color:#fff;
+                 font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.1em;
+                 transform:rotate(6deg);box-shadow:0 3px 8px var(--shadow)}
+  .people-empty{color:var(--ink-soft);font-style:italic;padding:8px 0}
+
+  /* 弹窗 夸夸奖 */
+  .mask{position:fixed;inset:0;background:rgba(40,30,18,.55);display:none;place-items:center;z-index:50;
+        backdrop-filter:blur(3px)}
+  .mask.show{display:grid;animation:fade .3s}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .award{background:linear-gradient(170deg,#fffaf0,#f6ead2);border:2px solid var(--gold);
+         border-radius:20px;padding:42px 40px;max-width:380px;width:90%;text-align:center;
+         position:relative;box-shadow:0 30px 70px -20px rgba(60,40,10,.5);
+         animation:rise .45s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes rise{from{transform:translateY(30px) scale(.92);opacity:0}to{transform:none;opacity:1}}
+  .award .ribbon{font-size:13px;letter-spacing:.4em;color:var(--seal);font-weight:700;text-indent:.4em}
+  .award .who{font-family:"Ma Shan Zheng",cursive;font-size:52px;color:var(--ink);margin:8px 0 2px}
+  .award .medal{font-size:64px;margin:6px 0 12px;display:inline-block;animation:spin 1.2s ease}
+  @keyframes spin{from{transform:rotate(-25deg) scale(.4)}to{transform:none}}
+  .award .big{font-family:"Ma Shan Zheng",cursive;font-size:40px;color:var(--seal);letter-spacing:.1em;margin:4px 0}
+  .award .note{color:var(--ink-soft);font-size:14px;margin:10px 0 22px;line-height:1.7}
+  .award .seal-stamp{position:absolute;bottom:18px;right:18px;width:54px;height:54px;border:2px solid var(--seal);
+        border-radius:6px;color:var(--seal);font-family:"Ma Shan Zheng",cursive;font-size:15px;
+        display:grid;place-items:center;line-height:1.1;transform:rotate(-10deg);opacity:.85}
+
+  /* 彩纸 */
+  .confetti{position:fixed;top:-10px;width:10px;height:16px;z-index:60;pointer-events:none;opacity:.95}
+  .rule-note{text-align:center;color:var(--ink-soft);font-size:13px;margin:-4px 0 22px;letter-spacing:.04em}
+  .rule-note b{color:var(--seal);font-weight:700}
+  .rule-note .award-on{color:var(--gold);font-weight:700}
+  .footer{text-align:center;color:var(--ink-soft);font-size:12px;margin-top:40px;letter-spacing:.15em}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="seal">读书<br>分享</div>
+    <div class="kicker">每 周 共 读 · 随 机 分 享</div>
+    <h1>读书会</h1>
+    <div class="subtitle">点一下，命运为你翻开下一页</div>
+    <div class="rule"></div>
+  </header>
+
+  <nav>
+    <button id="navHome" class="active" onclick="switchView('home')">分配页</button>
+    <button id="navAdmin" onclick="switchView('admin')">后台管理</button>
+  </nav>
+
+  <!-- ============ 分配页 ============ -->
+  <section id="viewHome">
+    <div class="stats">
+      <div class="stat"><div class="num" id="stPeople">0</div><div class="lbl">录入人数</div></div>
+      <div class="stat"><div class="num" id="stUsed">0</div><div class="lbl">已抽名额</div></div>
+      <div class="stat"><div class="num" id="stLeft">0</div><div class="lbl">剩余名额</div></div>
+      <div class="stat"><div class="num" id="stAward">0</div><div class="lbl">夸夸奖</div></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn seal" onclick="fillAll()">🎲 一键随机抽选（填满全部）</button>
+      <button class="btn ghost" onclick="resetDraw()">重置抽取</button>
+    </div>
+
+    <p class="rule-note" id="ruleNote"></p>
+
+    <div class="sheet" id="sheet"></div>
+    <p class="empty-hint" id="needPeople" style="text-align:center;margin-top:20px"></p>
+  </section>
+
+  <!-- ============ 后台管理 ============ -->
+  <section id="viewAdmin" class="hide">
+    <div class="panel">
+      <h2>录入分享人员</h2>
+      <p class="desc">每次共读约 80 页、分 16 段抽选。人满 8 人时每人最多被抽 <b>2</b> 次；不足 8 人时放宽到 <b>3</b> 次，被抽满 3 次者获得「夸夸奖」。系统会尽量让每个人都先被抽到。</p>
+      <div class="field">
+        <div class="grow">
+          <label>姓名</label>
+          <input type="text" id="nameInput" placeholder="输入姓名后回车，例如：陈明" onkeydown="if(event.key==='Enter')addPerson()">
+        </div>
+        <button class="btn seal" onclick="addPerson()">＋ 添加</button>
+      </div>
+      <div class="people" id="peopleList" style="margin-top:20px"></div>
+      <p class="people-empty hide" id="peopleEmpty">还没有录入人员，先在上面添加吧。</p>
+    </div>
+
+    <div class="panel">
+      <h2>页码段设置</h2>
+      <p class="desc">设置起始页、结束页与每段页数，自动生成左侧分配表。若页数不是每段页数的整数倍，最后一段有几页算几页。修改后点「重新生成」（会清空已抽取的分配）。</p>
+      <div class="field">
+        <div>
+          <label>起始页</label>
+          <input type="number" id="cfgStart" class="num-in" min="1" value="1">
+        </div>
+        <div>
+          <label>结束页</label>
+          <input type="number" id="cfgEnd" class="num-in" min="1" value="80">
+        </div>
+        <div>
+          <label>每段页数</label>
+          <input type="number" id="cfgStep" class="num-in" min="1" value="5">
+        </div>
+        <button class="btn" onclick="rebuildSegments()">重新生成</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>数据维护</h2>
+      <p class="desc">数据保存在本机浏览器中（部署后每台设备各自独立）。</p>
+      <div class="toolbar" style="margin:0;justify-content:flex-start">
+        <button class="btn ghost sm" onclick="clearAllPeople()">清空全部人员</button>
+        <button class="btn ghost sm" onclick="resetDraw()">仅重置抽取结果</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">读书会 · 随机分享系统</div>
+</div>
+
+<!-- 夸夸奖弹窗 -->
+<div class="mask" id="mask" onclick="if(event.target===this)closeAward()">
+  <div class="award">
+    <div class="ribbon">荣 誉 时 刻</div>
+    <div class="who" id="awardName">某某</div>
+    <div class="medal">🏅</div>
+    <div class="big">夸 夸 奖</div>
+    <div class="note">连续完成 3 次分享，<br>是当之无愧的「阅读之星」！</div>
+    <button class="btn seal" onclick="closeAward()">收下这份夸赞</button>
+    <div class="seal-stamp">读书<br>会</div>
+  </div>
+</div>
+
+<script>
+/* ---------- 本地存储（部署/本地可用；沙盒环境自动回退内存，避免报错） ---------- */
+const store=(()=>{let mem={},ok=true;
+  try{localStorage.setItem('__t','1');localStorage.removeItem('__t');}catch(e){ok=false;}
+  return{
+    get(k){try{return ok?localStorage.getItem(k):mem[k];}catch(e){return mem[k];}},
+    set(k,v){try{ok?localStorage.setItem(k,v):mem[k]=v;}catch(e){mem[k]=v;}}
+  };})();
+const KEY='reading_club_v1';
+
+/* ---------- 状态 ---------- */
+let state={
+  config:{step:5,start:1,end:80},
+  persons:[],            // [{name}]
+  segments:[]            // [{label, sharers:[name,...]}]
+};
+
+function load(){
+  const raw=store.get(KEY);
+  if(raw){try{state=JSON.parse(raw);}catch(e){}}
+  if(!state.config) state.config={step:5,start:1,end:80};
+  // 兼容旧版本（曾使用 total 字段）
+  if(state.config.step==null) state.config.step=5;
+  if(state.config.start==null) state.config.start=1;
+  if(state.config.end==null) state.config.end=state.config.total||80;
+  if(!state.segments||!state.segments.length) genSegments();
+  if(!state.persons) state.persons=[];
+}
+function save(){store.set(KEY,JSON.stringify(state));}
+
+/* ---------- 页码段 ---------- */
+function genSegments(){
+  const{step,start,end}=state.config;const segs=[];
+  for(let s=start;s<=end;s+=step){
+    const e=Math.min(s+step-1,end);
+    segs.push({label:`${s}–${e}`,sharers:[]});
+  }
+  state.segments=segs;
+}
+
+/* ---------- 计数与规则 ---------- */
+function countOf(name){
+  let c=0;state.segments.forEach(seg=>seg.sharers.forEach(n=>{if(n===name)c++;}));
+  return c;
+}
+// 规则：人数≥8 每人最多 2 次（无夸夸奖）；人数<8 放宽到 3 次（出现夸夸奖）
+function currentCap(){ return state.persons.length < 8 ? 3 : 2; }
+
+// 公平随机：在“当前被抽次数最少、且未达上限”的人里随机挑，保证大家都先被抽到
+function pickFair(){
+  const cap=currentCap();
+  const elig=state.persons.filter(p=>countOf(p.name)<cap);
+  if(!elig.length) return null;
+  const min=Math.min(...elig.map(p=>countOf(p.name)));
+  const cand=elig.filter(p=>countOf(p.name)===min);
+  return cand[Math.floor(Math.random()*cand.length)];
+}
+
+let awardedShown=new Set();
+
+/* ---------- 抽取（每段一人；已填则为重抽） ---------- */
+function draw(segIndex){
+  const seg=state.segments[segIndex];
+  const prev=seg.sharers[0];
+  seg.sharers=[];                 // 先释放本段名额，再公平抽取
+  const pick=pickFair();
+  if(!pick){
+    if(prev) seg.sharers=[prev];  // 抽不到则恢复原样
+    save();render();
+    alert('暂无可抽取的人员：名额已按规则用尽（当前每人最多 '+currentCap()+' 次）。');
+    return;
+  }
+  seg.sharers=[pick.name];
+  save();render();
+  if(countOf(pick.name)===3) showAward(pick.name);
+}
+
+function fillAll(){
+  let filled=0;
+  state.segments.forEach(seg=>{
+    if(seg.sharers.length===0){
+      const pick=pickFair();
+      if(pick){seg.sharers=[pick.name];filled++;}
+    }
+  });
+  save();render();
+  if(!filled){alert('没有空缺需要分配，或名额已用尽。');return;}
+  checkNewAwards();
+}
+
+function checkNewAwards(){
+  for(const p of state.persons){
+    if(countOf(p.name)===3 && !awardedShown.has(p.name)){showAward(p.name);break;}
+  }
+}
+
+function removeSharer(segIndex){
+  state.segments[segIndex].sharers=[];
+  save();render();
+}
+
+function resetDraw(){
+  if(!confirm('确定清空所有已抽取的分配结果？人员名单保留。'))return;
+  state.segments.forEach(s=>s.sharers=[]);
+  awardedShown.clear();
+  save();render();
+}
+
+/* ---------- 人员管理 ---------- */
+function addPerson(){
+  const inp=document.getElementById('nameInput');
+  const name=inp.value.trim();
+  if(!name)return;
+  if(state.persons.some(p=>p.name===name)){alert('该姓名已存在，请使用不同的名字加以区分（如 陈明、陈刚）。');return;}
+  state.persons.push({name});
+  inp.value='';inp.focus();
+  save();render();
+}
+function delPerson(name){
+  if(!confirm(`删除「${name}」？其已抽取的分配也会一并移除。`))return;
+  state.persons=state.persons.filter(p=>p.name!==name);
+  state.segments.forEach(s=>s.sharers=s.sharers.filter(n=>n!==name));
+  awardedShown.delete(name);
+  save();render();
+}
+function clearAllPeople(){
+  if(!confirm('确定清空全部人员及所有抽取结果？'))return;
+  state.persons=[];state.segments.forEach(s=>s.sharers=[]);awardedShown.clear();
+  save();render();
+}
+function rebuildSegments(){
+  const step=Math.max(1,parseInt(document.getElementById('cfgStep').value)||5);
+  const start=Math.max(1,parseInt(document.getElementById('cfgStart').value)||1);
+  const end=Math.max(start,parseInt(document.getElementById('cfgEnd').value)||start);
+  if(!confirm('重新生成页码段会清空当前所有抽取结果，确定继续？'))return;
+  state.config={step,start,end};genSegments();awardedShown.clear();
+  save();render();
+}
+
+/* ---------- 夸夸奖 ---------- */
+function showAward(name){
+  awardedShown.add(name);
+  document.getElementById('awardName').textContent=name;
+  document.getElementById('mask').classList.add('show');
+  burst();
+}
+function closeAward(){document.getElementById('mask').classList.remove('show');}
+
+function burst(){
+  const colors=['#b3372a','#b08a4a','#5a7d52','#2b2620','#e0b35a'];
+  for(let i=0;i<70;i++){
+    const c=document.createElement('div');c.className='confetti';
+    c.style.left=Math.random()*100+'vw';
+    c.style.background=colors[i%colors.length];
+    c.style.transform=`rotate(${Math.random()*360}deg)`;
+    const dur=2+Math.random()*1.5,delay=Math.random()*.4;
+    c.animate([
+      {transform:`translateY(-10px) rotate(0)`,opacity:1},
+      {transform:`translateY(105vh) rotate(${720+Math.random()*360}deg)`,opacity:.9}
+    ],{duration:dur*1000,delay:delay*1000,easing:'cubic-bezier(.3,.6,.5,1)'});
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),(dur+delay)*1000+200);
+  }
+}
+
+/* ---------- 渲染 ---------- */
+function render(){
+  // 统计与规则
+  const cap=currentCap();
+  const n=state.persons.length;
+  const totalSlots=n*cap;
+  const used=state.persons.reduce((a,p)=>a+countOf(p.name),0);
+  const awards=state.persons.filter(p=>countOf(p.name)===3).length;
+  const segCount=state.segments.length;
+  document.getElementById('stPeople').textContent=n;
+  document.getElementById('stUsed').textContent=used;
+  document.getElementById('stLeft').textContent=Math.max(0,totalSlots-used);
+  document.getElementById('stAward').textContent=awards;
+  const note=document.getElementById('ruleNote');
+  if(n===0){ note.innerHTML='请先到「后台管理」录入分享人员。'; }
+  else{
+    let s=`当前 <b>${n}</b> 人 · 共 <b>${segCount}</b> 段需抽取 · 每人最多被抽 <b>${cap}</b> 次`;
+    s += cap===3 ? ' · <span class="award-on">夸夸奖已开启 🏅</span>' : ' · 满 8 人不设夸夸奖';
+    note.innerHTML=s;
+  }
+
+  // 分配表
+  const sheet=document.getElementById('sheet');
+  sheet.innerHTML='';
+  state.segments.forEach((seg,i)=>{
+    const row=document.createElement('div');row.className='row';
+    const has=seg.sharers.length>0;
+    const chip=has
+      ? `<span class="chip">${esc(seg.sharers[0])}<span class="x" onclick="removeSharer(${i})">✕</span></span>`
+      : '<span class="empty-hint">尚未抽取</span>';
+    row.innerHTML=`
+      <div class="pg">${seg.label} 页<span>第 ${i+1} 段</span></div>
+      <div class="sharers">${chip}</div>
+      <div class="actions-cell"><button class="btn sm ${has?'ghost':''}" onclick="draw(${i})">${has?'重抽':'随机抽取'}</button></div>`;
+    sheet.appendChild(row);
+  });
+
+  document.getElementById('needPeople').textContent=
+    state.persons.length? '' : '提示：请先到「后台管理」录入分享人员，再回来抽取。';
+
+  // 人员名单
+  const list=document.getElementById('peopleList');
+  list.innerHTML='';
+  document.getElementById('peopleEmpty').classList.toggle('hide',state.persons.length>0);
+  state.persons.forEach(p=>{
+    const c=countOf(p.name);
+    const full=c>=cap;
+    const praised=(cap===3 && c>=3);
+    const labels=['A','B','C'].slice(0,cap);
+    const slots=labels.map((s,k)=>
+      `<div class="slot ${k<c?'used':''}">${s}</div>`).join('');
+    const card=document.createElement('div');
+    card.className='person'+(praised?' done':'');
+    card.innerHTML=`
+      ${praised?'<div class="badge">🏅 已夸</div>':(full?'<div class="badge" style="background:var(--ink)">已满</div>':'')}
+      <div class="pname">${esc(p.name)}<span class="del" onclick="delPerson('${esc(p.name)}')">删除</span></div>
+      <div class="slots">${slots}</div>
+      <div class="meta">已被抽中 ${c} / ${cap} 次</div>`;
+    list.appendChild(card);
+  });
+
+  // 配置回填
+  document.getElementById('cfgStep').value=state.config.step;
+  document.getElementById('cfgStart').value=state.config.start;
+  document.getElementById('cfgEnd').value=state.config.end;
+}
+
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+/* ---------- 视图切换 ---------- */
+function switchView(v){
+  const home=v==='home';
+  document.getElementById('viewHome').classList.toggle('hide',!home);
+  document.getElementById('viewAdmin').classList.toggle('hide',home);
+  document.getElementById('navHome').classList.toggle('active',home);
+  document.getElementById('navAdmin').classList.toggle('active',!home);
+}
+
+/* ---------- 启动 ---------- */
+load();render();
+</script>
+</body>
+</html>
